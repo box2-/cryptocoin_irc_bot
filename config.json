@@ -1,0 +1,8 @@
+{
+  "server" : "irc.xxxxx.org",
+  "port" : "6697",
+  "nick" : "xxxxx",
+  "channel" : {
+    "0":"#chan1",
+    "1":"#chan2"}
+}
