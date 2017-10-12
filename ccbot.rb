@@ -1,4 +1,4 @@
-!/usr/bin/env ruby
+#!/usr/bin/env ruby
 ################################################################################
 # ruby >= 2.0
 #
@@ -16,10 +16,8 @@ require 'eventmachine'
 require 'net/http'
 require 'json'
 
-server = 'irc.xxxx.org'
-port = '6697'
-nick = 'xxxxx'
-channel = ['#chan1', '#chan2']
+# Pull connection information from our config file
+conf = JSON.parse(File.read("config.json"))
 
 ############################################################
 # socket connection and irc side commands                  #
@@ -33,7 +31,7 @@ class IRC
     conn = TCPSocket.new(@bot[:server], @bot[:port])
     @socket = OpenSSL::SSL::SSLSocket.new(conn)
     @socket.connect
-
+ 
     say "NICK #{@bot[:nick]}"
     say "USER #{@bot[:nick]} 0 * ."
   end
@@ -47,7 +45,7 @@ class IRC
     r = msg.split("\n")
     r.each{ |x| say "PRIVMSG #{chan} :#{x}" }
   end
-
+  
   def run
     joined = false
     until @socket.eof? do
@@ -59,6 +57,11 @@ class IRC
         @bot[:channel].each{ |x| say "JOIN #{x}" }
         joined = true
       end
+
+      # save this for later logging maybe
+#      @history = []
+#      @history.push( ['timestamp' => Time.now, 'username' => msg.match(/<.(\w+)>/)] )
+        
       if msg.match(/^PING :(.*)$/)
         say "PONG #{$~[1]}"
         next
@@ -69,9 +72,9 @@ class IRC
 ############################################################
       # What channel did we receive this from? (Does not view private messages)
       chan = msg.match(/\#(.*?) /)
-
+      
       # Here we match chat line only if it begins with !cc and is exactly just that or has a space after
-      if msg.match(/\:!cc(?!\S)/)
+      if msg.match(/\:!cc(?!\S)/) 
         # Here we are breaking the regex into a hash table
         regexp = %r{
           (?<command> :!cc ) {0}
@@ -82,11 +85,11 @@ class IRC
         recv = regexp.match(msg)
         args = recv['args'].split(" ")
 
-        if(!args.empty?)
-          if(args[0] == "-h")
+        if(args.empty?)
+          say_to_chan(CryptoPull.dailyStats, chan)
+        elsif(args[0] == "-h")
             toSay = "CryptoCurrency bot use: !cc [options]\n\
 Valid switches are: -h (this help), -l to list supported coins, or a space seperated list of coin symbols."
-            p toSay
             say_to_chan(toSay, chan)
           elsif(args[0] == "-l")
             toSay = "Currently supported symbols: BTC, LTC, ETH"
@@ -97,24 +100,19 @@ Valid switches are: -h (this help), -l to list supported coins, or a space seper
             args.each do |x|
               if(x.upcase == "BTC" || x.upcase == "LTC" || x.upcase == "ETH")
                 say_to_chan(CryptoPull.dailyStats(x), chan)
-              end
             end
           end
-        else
-          say_to_chan(CryptoPull.dailyStats, chan)
         end
-
       end
-    end
 
+    end  
   end
-
+  
   def get_history
     return @history
   end
 
   def quit(msg = nil)
-    #say "PART ##{@channel} :SHIPOOPIE"
     say( msg ? "QUIT #{msg}" : "QUIT" )
     abort("Thank you for playing.")
   end
@@ -184,7 +182,7 @@ end
 # Main #
 ########
 # initialize our irc bot
-irc = IRC.new(server, port, channel, nick)
+irc = IRC.new(conf["server"], conf["port"], conf["channel"], conf["nick"]) 
 
 # trap ^C signal from keyboard and gracefully shutdown the bot
 # quit messages are only heard by IRCD's if you have been connected long enough(!)
@@ -198,6 +196,6 @@ irc.connect
 # run main irc bot execution loop (ping/pong, communication etc)
 irc_thread = Thread.new{ irc.run }
 # this locks until irc.run is finished, but we now see incoming irc traffic in terminal
-irc_thread.join
+irc_thread.join   
 
 puts 'this wont appear'
