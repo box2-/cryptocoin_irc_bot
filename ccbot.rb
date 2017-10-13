@@ -88,17 +88,16 @@ class IRC
         if(args.empty?)
           say_to_chan(CryptoPull.dailyStats, chan)
         elsif(args[0] == "-h")
-            toSay = "CryptoCurrency bot use: !cc [options]\n\
-Valid switches are: -h (this help), -l to list supported coins, or a space seperated list of coin symbols."
+            toSay = "CryptoCurrency bot use: !cc [options]   Valid switches are: -h (this help), -l to list supported coins, or a space seperated list of coin symbols.  Open price is the first price of the UTC day."
             say_to_chan(toSay, chan)
           elsif(args[0] == "-l")
-            toSay = "Currently supported symbols: BTC, LTC, ETH"
+            toSay = "Currently supported symbols: BTC, LTC, ETH, XRP"
             say_to_chan(toSay, chan)
-          elsif(args.count > 3)
+          elsif(args.count > 4)
             say_to_chan("Too many arguments", chan)
           else
             args.each do |x|
-              if(x.upcase == "BTC" || x.upcase == "LTC" || x.upcase == "ETH")
+              if(x.upcase == "BTC" || x.upcase == "LTC" || x.upcase == "ETH" || x.upcase == "XRP")
                 say_to_chan(CryptoPull.dailyStats(x), chan)
             end
           end
@@ -170,7 +169,7 @@ module CryptoPull
       (pChange > 0) ? pChange = "+" + pChange.to_s : ""
 
       msg = "24H #{coin} Performance:  "
-      msg += "High: #{body['high']}  Low: #{body['low']}  Last: #{body['last']}  (#{pChange})  Volume: #{body['volume']}"
+      msg += "High: #{body['high']}  Low: #{body['low']}  Last: #{body['last']}  (#{pChange}%)  Volume: #{body['volume']}"
       return msg
     else
       return "Error: #{coin} not a valid cryptocurrency token."
