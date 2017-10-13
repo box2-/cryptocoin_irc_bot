@@ -165,15 +165,30 @@ module CryptoPull
     res = Net::HTTP.get_response(uri)
     if (res.code != "404")
       body = JSON.parse(res.body)
-      pChange = (((body['last'].to_f - body['open'].to_f) / body['open'].to_f.truncate * 100) * 1000).floor / 1000.0
+
+      # % Change from todays open price (first order of the UTC day) and current price
+      pChange = (((body['last'].to_f - body['open'].to_f) / body['open'].to_f * 100) * 1000).floor / 1000.0
       (pChange > 0) ? pChange = "+" + pChange.to_s : ""
 
-      msg = "24H #{coin} Performance:  "
-      msg += "High: #{body['high']}  Low: #{body['low']}  Last: #{body['last']}  (#{pChange}%)  Volume: #{body['volume']}"
+      # Beautify our values
+      high = CryptoPull.commas(body['high'])
+      low = CryptoPull.commas(body['low'])
+      open = CryptoPull.commas(body['open'])
+      last = CryptoPull.commas(body['last'])
+      volume = CryptoPull.commas(body['volume'])
+
+      msg = "#{coin} Daily:  "
+      msg += "High: #{high} Low: #{low} Open: #{open} Last: #{last} (#{pChange}%) Volume: #{volume}"
       return msg
     else
       return "Error: #{coin} not a valid cryptocurrency token."
     end
+  end
+
+  # Jesus christ why doesn't ruby have a function to add commas to a number already
+  def self.commas(num)
+    first, *rest = num.split(".")
+    return first.reverse.gsub(/(\d+\.)?(\d{3})(?=\d)/, '\\1\\2,').reverse + "." + rest[0]
   end
 end
 
@@ -185,7 +200,7 @@ irc = IRC.new(conf["server"], conf["port"], conf["channel"], conf["nick"])
 
 # trap ^C signal from keyboard and gracefully shutdown the bot
 # quit messages are only heard by IRCD's if you have been connected long enough(!)
-trap("INT"){ irc.quit("fucking off..") }
+trap("INT"){ irc.quit("Console Quit") }
 
 # spawn console input handling thread
 console = Thread.new{ ConsoleThread.new(irc) }
