@@ -58,10 +58,6 @@ class IRC
         joined = true
       end
 
-      # save this for later logging maybe
-#      @history = []
-#      @history.push( ['timestamp' => Time.now, 'username' => msg.match(/<.(\w+)>/)] )
-        
       if msg.match(/^PING :(.*)$/)
         say "PONG #{$~[1]}"
         next
@@ -73,6 +69,27 @@ class IRC
       # What channel did we receive this from? (Does not view private messages)
       chan = msg.match(/\#(.*?) /)
       
+      if msg.match(/\:!gainz /)
+        # Here we are breaking the regex into a hash table
+        regexp = %r{
+          (?<command> :!gainz ) {0}
+          (?<args> (.*) ) {0}
+          \g<command> \g<args>
+        }x
+        recv = regexp.match(msg)
+        args = recv['args'].split(" ")
+
+        if(args.count == 2)
+          begin
+            pChange = (((args[1].to_f - args[0].to_f) / args[0].to_f * 100) * 1000).floor / 1000.0
+            (pChange > 0) ? pChange = "+" + pChange.to_s : ""
+            say_to_chan(pChange.to_s + "%", chan)
+          rescue
+            say_to_chan("An error occured", chan)
+          end
+        end
+      end
+
       # Here we match chat line only if it begins with !cc and is exactly just that or has a space after
       if msg.match(/\:!cc(?!\S)/) 
         # Here we are breaking the regex into a hash table
@@ -167,8 +184,12 @@ module CryptoPull
       body = JSON.parse(res.body)
 
       # % Change from todays open price (first order of the UTC day) and current price
-      pChange = (((body['last'].to_f - body['open'].to_f) / body['open'].to_f * 100) * 1000).floor / 1000.0
-      (pChange > 0) ? pChange = "+" + pChange.to_s : ""
+      begin
+        pChange = (((body['last'].to_f - body['open'].to_f) / body['open'].to_f * 100) * 1000).floor / 1000.0
+        (pChange > 0) ? pChange = "+" + pChange.to_s : ""
+      rescue
+        pChange = "Error"
+      end
 
       # Beautify our values
       high = CryptoPull.commas(body['high'])
