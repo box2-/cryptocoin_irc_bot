@@ -68,7 +68,42 @@ class IRC
 ############################################################
       # What channel did we receive this from? (Does not view private messages)
       chan = msg.match(/\#(.*?) /)
+
+############################################################
+# Get stocks
+############################################################
+      if msg.match(/\:!s /)
+        # Here we are breaking the regex into a hash table
+        regexp = %r{
+          (?<command> :!s ) {0}
+          (?<args> (.*) ) {0}
+          \g<command> \g<args>
+        }x
+        recv = regexp.match(msg)
+        args = recv['args'].split(" ")
+        if (args.count > 0)
+          args.each do |arg|
+            if(arg.match(/^[A-z]+$/))
+              uri = URI.parse("http://download.finance.yahoo.com/d/quotes.csv?s=#{arg}&f=nlp2")
+              response = Net::HTTP.get_response(uri)
+
+              x = response.body.gsub(/\\|-|<b>|<\/b>|\n/,'').split("\",")
+              begin
+                (0..2).each do |poo|
+                  x[poo] = x[poo].tr('"', "")
+                end
+                say_to_chan("#{arg.upcase} (#{x[0]}): #{x[1]} (#{x[2]})", chan)
+              rescue
+                # say_to_chan("#{arg.upcase} not a valid symbol.")
+              end
+            end
+          end
+        end
+      end
       
+############################################################
+# Calculate gain % of 2 inputs
+############################################################
       if msg.match(/\:!gainz /)
         # Here we are breaking the regex into a hash table
         regexp = %r{
@@ -81,7 +116,9 @@ class IRC
 
         if(args.count == 2)
           begin
-            pChange = (((args[1].to_f - args[0].to_f) / args[0].to_f * 100) * 1000).floor / 1000.0
+            start = args[0].delete(",").to_f
+            fin = args[1].delete(",").to_f
+            pChange = ((((fin - start) / start) * 100) * 1000).floor / 1000.0
             (pChange > 0) ? pChange = "+" + pChange.to_s : ""
             say_to_chan(pChange.to_s + "%", chan)
           rescue
@@ -90,6 +127,9 @@ class IRC
         end
       end
 
+############################################################
+# Get cryptos
+############################################################
       # Here we match chat line only if it begins with !cc and is exactly just that or has a space after
       if msg.match(/\:!cc(?!\S)/) 
         # Here we are breaking the regex into a hash table
@@ -166,6 +206,8 @@ class ConsoleThread
       when input.match(/^\/raw (.*)/)
           bot.say $~[1]
       # doesnt begin with /, send chat to channel
+      # right now this only works for the first channel in our list by default
+      # for other channals use: /msg #channel message
       else
         bot.say_to_chan(input)
       end
