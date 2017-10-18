@@ -87,7 +87,7 @@ class IRC
               uri = URI.parse("http://download.finance.yahoo.com/d/quotes.csv?s=#{arg}&f=nlp2")
               response = Net::HTTP.get_response(uri)
 
-              x = response.body.gsub(/\\|-|<b>|<\/b>|\n/,'').split("\",")
+              x = response.body.gsub(/\\|- |<b>|<\/b>|\n/,'').split("\",")
               begin
                 (0..2).each do |poo|
                   x[poo] = x[poo].tr('"', "")
