@@ -1,7 +1,7 @@
 # Ruby IRC Bot
-This bot started as a way to view current crypto currency exchange rates on irc and to practice ruby.  It's since had some features added.
+This bot started as a way to view crypto currency exchange rates on irc and to practice ruby.  It's since had some features added.
 
-## Options
+## Triggers
 !s [space seperated list of stock symbols]
 * This option pulls stock information from yahoo
 

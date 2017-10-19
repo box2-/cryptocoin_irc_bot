@@ -4,7 +4,7 @@
 #
 # This bot requires:
 # -- apt-get install ruby ruby-dev
-# -- gem install eventmachine
+# -- gem install eventmachine colorize
 #
 # This bot will pull stock information for irc
 #
@@ -15,6 +15,7 @@ require 'thread'
 require 'eventmachine'
 require 'net/http'
 require 'json'
+require 'colorize'
 
 # Pull connection information from our config file
 conf = JSON.parse(File.read("config.json"))
@@ -92,8 +93,11 @@ class IRC
                 (0..2).each do |poo|
                   x[poo] = x[poo].tr('"', "")
                 end
-                say_to_chan("#{arg.upcase} (#{x[0]}): #{x[1]} (#{x[2]})", chan)
-              rescue
+                z = x[1].split(" ")
+                x[2] = x[2].match(/\+/) ? x[2].green : x[2].red
+                say_to_chan("#{arg.upcase} (#{x[0]}): $#{z[1]} (#{x[2]}) at #{z[0]}", chan)
+              rescue => error
+                p error
                 # say_to_chan("#{arg.upcase} not a valid symbol.")
               end
             end
