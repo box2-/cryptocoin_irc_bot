@@ -4,7 +4,7 @@
 #
 # This bot requires:
 # -- apt-get install ruby ruby-dev
-# -- gem install eventmachine colorize
+# -- gem install eventmachine string-irc
 #
 # This bot will pull stock information for irc
 #
@@ -15,7 +15,7 @@ require 'thread'
 require 'eventmachine'
 require 'net/http'
 require 'json'
-require 'colorize'
+require 'string-irc'
 
 # Pull connection information from our config file
 conf = JSON.parse(File.read("config.json"))
@@ -94,7 +94,7 @@ class IRC
                   x[poo] = x[poo].tr('"', "")
                 end
                 z = x[1].split(" ")
-                x[2] = x[2].match(/\+/) ? x[2].green : x[2].red
+                x[2] = x[2].match(/\+/) ? StringIrc.new(x[2]).green.to_s : StringIrc.new(x[2]).maroon.to_s
                 say_to_chan("#{arg.upcase} (#{x[0]}): $#{z[1]} (#{x[2]}) at #{z[0]}", chan)
               rescue => error
                 p error
