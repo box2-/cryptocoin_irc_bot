@@ -84,7 +84,7 @@ class IRC
         args = recv['args'].split(" ")
         if (args.count > 0)
           args.each do |arg|
-            if(arg.match(/^[A-z]+$/))
+            if(arg.match(/^[A-z0-9\.]+$/))
               uri = URI.parse("http://download.finance.yahoo.com/d/quotes.csv?s=#{arg}&f=nlp2")
               response = Net::HTTP.get_response(uri)
 
@@ -232,8 +232,10 @@ module CryptoPull
       # % Change from todays open price (first order of the UTC day) and current price
       begin
         pChange = (((body['last'].to_f - body['open'].to_f) / body['open'].to_f * 100) * 1000).floor / 1000.0
-        (pChange > 0) ? pChange = "+" + pChange.to_s : ""
-      rescue
+        pChange = (pChange > 0) ? pChange.to_s.prepend("+") : pChange.to_s
+        pChange = pChange.match(/\+/) ? StringIrc.new(pChange + "%").green.to_s : StringIrc.new(pChange + "%").maroon.to_s
+      rescue => error
+        p error
         pChange = "Error"
       end
 
@@ -244,8 +246,8 @@ module CryptoPull
       last = CryptoPull.commas(body['last'])
       volume = CryptoPull.commas(body['volume'])
 
-      msg = "#{coin} Daily:  "
-      msg += "High: #{high} Low: #{low} Open: #{open} Last: #{last} (#{pChange}%) Volume: #{volume}"
+      msg = "#{coin.upcase} Daily:  "
+      msg += "High: #{high} Low: #{low} Open: #{open} Last: #{last} (#{pChange}) Volume: #{volume}"
       return msg
     else
       return "Error: #{coin} not a valid cryptocurrency token."
