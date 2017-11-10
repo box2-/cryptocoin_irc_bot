@@ -2,5 +2,6 @@
   "server" : "irc.xxxxx.org",
   "port" : "6697",
   "nick" : "xxxxx",
-  "channel" : ["#chan1","#chan2"]
+  "channel" : ["#chan1","#chan2"],
+  "api-key" : "xxxxxx"
 }

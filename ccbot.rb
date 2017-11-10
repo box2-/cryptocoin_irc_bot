@@ -8,6 +8,9 @@
 #
 # This bot will pull stock information for irc
 #
+# This bot uses Alpha Vantage service, so you have to sign up for an API key
+# https://www.alphavantage.co/
+#
 ################################################################################
 require 'socket'
 require 'openssl'
@@ -24,8 +27,8 @@ conf = JSON.parse(File.read("config.json"))
 # socket connection and irc side commands                  #
 ############################################################
 class IRC
-  def initialize(server, port, channel, nick)
-    @bot = { :server => server, :port => port, :channel => channel, :nick => nick }
+  def initialize(server, port, channel, nick, api)
+    @bot = { :server => server, :port => port, :channel => channel, :nick => nick, :api => api }
   end
 
   def connect
@@ -85,20 +88,22 @@ class IRC
         if (args.count > 0)
           args.each do |arg|
             if(arg.match(/^[A-z0-9\.]+$/))
-              uri = URI.parse("http://download.finance.yahoo.com/d/quotes.csv?s=#{arg}&f=nlp2")
+              uri = URI.parse("https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=#{arg}&apikey=#{@bot[:api]}")
               response = Net::HTTP.get_response(uri)
 
-              x = response.body.gsub(/\\|- |<b>|<\/b>|\n/,'').split("\",")
+              data = JSON.parse(response.body)
+              today = Time.now.strftime("%Y-%m-%d")
               begin
-                (0..2).each do |poo|
-                  x[poo] = x[poo].tr('"', "")
-                end
-                z = x[1].split(" ")
-                x[2] = x[2].match(/\+/) ? StringIrc.new(x[2]).green.to_s : StringIrc.new(x[2]).maroon.to_s
-                say_to_chan("#{arg.upcase} (#{x[0]}): $#{z[1]} (#{x[2]}) at #{z[0]}", chan)
+                last = data["Time Series (Daily)"][today]["4. close"].chop.chop
+                open = data["Time Series (Daily)"][today]["1. open"].chop.chop
+                gain = "(#{CryptoPull.gainz(open, last)})"
+                gain = gain.match(/\+/) ? StringIrc.new(gain).green.to_s : StringIrc.new(gain).maroon.to_s
+                high = data["Time Series (Daily)"][today]["2. high"].chop.chop
+                low = data["Time Series (Daily)"][today]["3. low"].chop.chop
+
+                say_to_chan("#{arg.upcase}: Open: $#{open} Last: $#{last} #{gain} High: $#{high} Low: $#{low}", chan)
               rescue => error
                 p error
-                # say_to_chan("#{arg.upcase} not a valid symbol.")
               end
             end
           end
@@ -119,17 +124,25 @@ class IRC
         args = recv['args'].split(" ")
 
         if(args.count == 2)
-          begin
-            start = args[0].delete(",").to_f
-            fin = args[1].delete(",").to_f
-            pChange = ((((fin - start) / start) * 100) * 1000).floor / 1000.0
-            (pChange > 0) ? pChange = "+" + pChange.to_s : ""
-            say_to_chan(pChange.to_s + "%", chan)
-          rescue
-            say_to_chan("An error occured", chan)
-          end
+          say_to_chan(CryptoPull.gainz(args[0], args[1]))
         end
       end
+
+      if msg.match(/\:!return /)
+        # Here we are breaking the regex into a hash table
+        regexp = %r{
+          (?<command> :!return ) {0}
+          (?<args> (.*) ) {0}
+          \g<command> \g<args>
+        }x
+        recv = regexp.match(msg)
+        args = recv['args'].split(" ")
+
+        if(args.count == 2)
+          say_to_chan(CryptoPull.gainz(args[0], args[1]))
+        end
+      end
+
 
 ############################################################
 # Get cryptos
@@ -259,13 +272,26 @@ module CryptoPull
     first, *rest = num.split(".")
     return first.reverse.gsub(/(\d+\.)?(\d{3})(?=\d)/, '\\1\\2,').reverse + "." + rest[0]
   end
+
+  # Calculate % return of two arbitrary numbers
+  def self.gainz(num1, num2)
+    begin
+      start = num1.delete(",").to_f
+      fin = num2.delete(",").to_f
+      pChange = ((((fin - start) / start) * 100) * 1000).floor / 1000.0
+      (pChange > 0) ? pChange = "+" + pChange.to_s : ""
+      return pChange.to_s + "%"
+    rescue
+      return "An error occured"
+    end
+  end
 end
 
 ########
 # Main #
 ########
 # initialize our irc bot
-irc = IRC.new(conf["server"], conf["port"], conf["channel"], conf["nick"]) 
+irc = IRC.new(conf["server"], conf["port"], conf["channel"], conf["nick"], conf["api-key"]) 
 
 # trap ^C signal from keyboard and gracefully shutdown the bot
 # quit messages are only heard by IRCD's if you have been connected long enough(!)
